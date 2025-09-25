@@ -29,9 +29,10 @@ prismlocal_path="$HOME/.local/share/PrismLauncher"
 appimage="$minecraft_path/PrismLauncher-Linux-x86_64.AppImage" #Dossier sense contenir le .appimage du launcher
 url="https://github.com/PrismLauncher/PrismLauncher/releases/download/9.4/PrismLauncher-Linux-x86_64.AppImage" #URL du github pour telecharger le launcher
 
-total=$(($used_storage+$minecraft_storage+$margin_storage))
-check_storage(){ #VALIDE
-if [  $total-gt$max_storage ]; then
+total_storage=$(($used_storage+$minecraft_storage+$margin_storage))
+check_storage(){
+	#verification si l'AFS peut installer minecraft en plus de garder un marge pour les autre fichiers
+if [  $total_storage -gt $max_storage ]; then
     	   printf "Impossible d'installer minecraft, il n'y a pas assez de place."
     	   printf "\n\tEssayez de supprimer quelques fichiers, regardez dans les configuration (du -h --max-depth=1 ~/.confs) pour connaitre la taille des differentes configuration"
     	   printf "\n\tNote: Chez moi la configuration de Discord faisait plus de 700Mo et celle de Firefox plus de 600Mo"
@@ -41,36 +42,37 @@ if [  $total-gt$max_storage ]; then
 	fi
 }
 
-check_path(){ #VALIDE
+check_path(){
 	#Verfication de l'arbo du dossier minecraft
-	if [ ! -f "$minecraft_path"  ]; then
+	if [ ! -d "$minecraft_path"  ]; then
 	   mkdir $minecraft_path $launcher_config_path $instances_path $mods_path $java_path
 
 	else
-	   if [ ! -f "$instances_path" ]; then
+	   if [ ! -d "$instances_path" ]; then
 	      mkdir $instances_path
 	   fi
 
-           if [ ! -f "$mods_path" ]; then
+           if [ ! -d "$mods_path" ]; then
 	      mkdir $mods_path
 	   fi
 
-	   if [ ! -f "$java_path" ]; then
+	   if [ ! -d "$java_path" ]; then
 	      mkdir $java_path
 	   fi
 
-	   if [ ! -f "$launcher_config_path" ]; then
+	   if [ ! -d "$launcher_config_path" ]; then
 	      mkdir $launcher_config_path
 	   fi
 
-	   if [ ! -f "$downloads_path" ]; then
+	   if [ ! -d "$downloads_path" ]; then
 	      mkdir $downloads_path
 	   fi
 	fi
 }
 
-check_config(){ #VALIDE
-	if [ ! -f "launcher_config_path/prismlauncher.cfg" ]; then
+check_config(){
+	#telechargement et modification de la config
+	if [ ! -f "$launcher_config_path/prismlauncher.cfg" ]; then
 	   wget -P "$launcher_config_path/" "https://raw.githubusercontent.com/PixPix20/Minecraft-Installer/refs/heads/main/prismlauncher.cfg"
 	   sed -i "s|DownloadsDir=|DownloadsDir=$downloads_path|" $launcher_config_path/prismlauncher.cfg
 	   sed -i "s|InstanceDir=|InstanceDir=$instances_path|" $launcher_config_path/prismlauncher.cfg
@@ -80,23 +82,25 @@ fi
 }
 
 check_account(){
-	#TODO: A voir
-	while [ ! -f "$launcher_config_path/accounts.sh" ]; do
+	#enregistrement du compte une fois connecte
+	while [ ! -f "$prismlocal_path/accounts.json" ]; do
 	      sleep 2
 	done
-	cp $HOME/.local/share/PrismLauncher/accounts.json $launcher_config_path
+	cp $prismlocal_path/accounts.json $launcher_config_path
 }
 
-check_launcher(){ #VALIDE
+check_launcher(){
+	#telechargement du launcher si inexistant
 	if [ ! -f "$appimage" ]; then
     	   echo "Téléchargement de PrismLauncher..."
     	   mkdir -p "$(dirname "$appimage")"
     	   #curl -L -o "$appimage" "$url"
-    	   wget -P "$appimage" "$url"
-chmod +x "$appimage"
+    	   wget -O "$appimage" "$url"
+	   chmod +x "$appimage"
 	fi
 }
-cop_files(){ #VALIDE
+cop_files(){
+	#deplacement des fichers de config et du compte dans le .local du launcher
 	if [ ! -f "$prismlocal_path" ]; then
 	   mkdir -p $prismlocal_path
 	fi
@@ -108,10 +112,10 @@ start_launcher(){
 }
 
 #installation
-#check_storage
+check_storage
 check_path
 check_config
 cop_files
 check_launcher
 echo fin
-start_launcher && check_account # doit se faire en para
+start_launcher & check_account # doit se faire en para
