@@ -3,15 +3,6 @@ set -euo pipefail
 
 VERSION=1.0
 
-#NOTES:
-#Verification du stockage : OK
-#creation des dossiers : OK
-#creation de la config : OK
-#creation du compte : OK mais A VOIR
-#sys de deplacement des files : OK
-#sys de lancement: OK
-#telechargement du launcher : OK
-
 #On verifie qu'il y a assez de place pour installer minecraft en plus de garder un peu de place pour le reste
 max_storage=2147483648 #2Go, le stockage max de l'afs, je deconseille fortement d'augmenter cette valeur !
 used_storage=$(du -sb "$HOME/afs" | awk '{print $1}') #La taille actuelle de votre afs
@@ -117,5 +108,4 @@ check_path
 check_config
 cop_files
 check_launcher
-echo fin
 start_launcher & check_account # doit se faire en para
