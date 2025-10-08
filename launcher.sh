@@ -224,9 +224,10 @@ main() {
             ;;
         -l|--launch)
             start_launcher
-	    check_path
-	    check_config
-	    check_launcher
+	    	check_path
+	    	check_config
+	    	check_launcher
+			cop_files
             ;;
         --add-dmenu)
             add_to_dmenu
