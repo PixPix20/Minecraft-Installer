@@ -198,23 +198,14 @@ start_launcher(){
 	nix-shell -p appimage-run --run "appimage-run $launcher_appimage"
 }
 
-setup(){ #Configure i3 pour l'ajouter le launcher dans dmenu_run
-#archi
-#$HOME/afs/.confs/config/i3/config
-#apres bindsym $mod+d exec --no-startup-id PATH=$HOME/afs/minecraft/bin:$PATH  dmenu_run
-#avant bindsym $mod+d exec --no-startup-id dmenu_run
-	sed -i "s|bindsym $mod+d exec --no-startup-id|bindsym $mod+d exec --no-startup-id PATH=$HOME/afs/minecraft:$PATH|" "$HOME/afs/.confs/config/i3/config"
-#revoir la modif de ligne, trouver un truc plus opti (sed)
-
-	echo "export PATH=$HOME/afs/minecraft/bin:$PATH" >> $HOME/.bashrc
-	source .bashrc
-	mv $(pwd)/launcher.sh $bin_path
-}
-
 main() {
     if [ $# -eq 0 ]; then
-        help_msg
-        exit 0
+        check_path
+	    check_config
+	    check_launcher
+	    cop_files
+	    check_account & start_launcher
+		exit 0
     fi
 
     case "$1" in
@@ -232,14 +223,14 @@ main() {
         -r|--remove)
             remove_all
             ;;
-        -l|--launch)
-	    check_path
-	    check_config
-	    check_launcher
-	    cop_files
-	    check_account & start_launcher
-            ;;
-        --add-dmenu)
+		-l|--launch)
+			check_path
+		    check_config
+		    check_launcher
+		    cop_files
+		    check_account & start_launcher
+			;;
+        -ad|--add-dmenu)
             add_to_dmenu
             ;;
         -h|--help)
