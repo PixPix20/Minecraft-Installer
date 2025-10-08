@@ -32,14 +32,14 @@ margin_storage=419430400 #400Mo, marge de securité pour que vous puissiez utili
 env="dev"
 #AFS
 afs=""
-i3="$afs/.confs/config/i3/config"
-
 if [ "$env" = "dev" ]; then
 	afs="$HOME/test"
-	mkdir $afs $i3
 else
 	afs="$HOME/afs"
 fi
+
+i3="$afs/.confs/config/i3/config"
+mkdir -p "$afs" "$i3"
 
 #LAUNCHER
 
