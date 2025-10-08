@@ -29,11 +29,18 @@ VERSION="1.1"
 max_storage=2147483648 #2Go, le stockage max de l'afs, je deconseille fortement d'augmenter cette valeur !
 minecraft_storage=943718400 #900Mo, j'utilise cette valeur si vous voulez jouer avec un modpack qui est lourd
 margin_storage=419430400 #400Mo, marge de securité pour que vous puissiez utiliser l'afs aprés l'installation du jeu, je deconseille de modifier cette valeur
-
+env="dev"
 #AFS
-#afs="$HOME/afs/test"
-afs="$HOME/test"
+afs=""
 i3="$afs/.confs/config/i3/config"
+
+if [ "$env" = "dev" ]; then
+	afs="$HOME/test"
+	mkdir $afs $i3
+else
+	afs="$HOME/afs"
+fi
+
 #LAUNCHER
 
 minecraft_path="$afs/minecraft" #dossier qui contient minecraft la conf du launcher etc
