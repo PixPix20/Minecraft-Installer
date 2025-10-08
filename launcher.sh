@@ -29,17 +29,19 @@ VERSION="1.1"
 max_storage=2147483648 #2Go, le stockage max de l'afs, je deconseille fortement d'augmenter cette valeur !
 minecraft_storage=943718400 #900Mo, j'utilise cette valeur si vous voulez jouer avec un modpack qui est lourd
 margin_storage=419430400 #400Mo, marge de securité pour que vous puissiez utiliser l'afs aprés l'installation du jeu, je deconseille de modifier cette valeur
-env="dev"
+env="prod"
 #AFS
-afs=""
 if [ "$env" = "dev" ]; then
 	afs="$HOME/test"
 else
 	afs="$HOME/afs"
-fi
+	i3="$afs/.confs/config/i3/config"
 
-i3="$afs/.confs/config/i3/config"
-mkdir -p "$afs" "$i3"
+fi
+i3=$afs/.confs/config/i3/
+i3_config=$i3/config
+mkdir -p $afs $i3
+
 
 #LAUNCHER
 
@@ -105,10 +107,11 @@ check_config(){
 
 add_to_dmenu() {
     # Ajoute le bin dans le PATH via dmenu_run
-    sed -i "s|bindsym \$mod+d exec --no-startup-id dmenu_run|bindsym \$mod+d exec --no-startup-id PATH=$bin_path:\$PATH dmenu_run|" "$i3"
+    sed -i "s|bindsym \$mod+d exec --no-startup-id dmenu_run|bindsym \$mod+d exec --no-startup-id PATH=$bin_path:\$PATH dmenu_run|" "$i3_config"
     echo "export PATH=$bin_path:\$PATH" >> "$HOME/.bashrc"
     source "$HOME/.bashrc"
     cp "$0" "$bin_path/minecraft-launcher"
+    chmod +x "$bin_path/minecraft-launcher"
     #echo "Ajouté à dmenu !"
 }
 
@@ -136,7 +139,7 @@ update_script() {
 get_remote_version() {
     # Récupère la version sur GitHub avec l'API
     remote_url="https://api.github.com/repos/PixPix20/Minecraft-Installer/releases/latest"
-    version=$(curl -s $remote_url | jq -r '.tag_name')
+    version=$(curl -s $remote_url | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
     echo "$version"
 }
 
@@ -168,11 +171,11 @@ check_script_update() {
 
 check_account(){
 	#enregistrement du compte une fois connecte
-	while [ ! -f "$prismlocal_path/accounts.json" ]; do
+	while [ ! -f "$launcher_local_files_path/accounts.json" ]; do
 	      sleep 2
 	done
 	printf "Compte détécté, sauvegarde"
-	cp $prismlocal_path/accounts.json $launcher_config_path
+	cp $launcher_local_files_path/accounts.json $launcher_config_path
 }
 
 check_launcher(){
@@ -187,8 +190,8 @@ check_launcher(){
 }
 cop_files(){
 	#deplacement des fichers de config et du compte dans le .local du launcher
-	mkdir -p $prism_local_files_path
-	cp $launcher_config_path/* $prism_local_files_path
+	mkdir -p $launcher_local_files_path
+	cp $launcher_config_path/* $launcher_local_files_path
 }
 
 start_launcher(){
@@ -230,11 +233,11 @@ main() {
             remove_all
             ;;
         -l|--launch)
-            start_launcher
-	    	check_path
-	    	check_config
-	    	check_launcher
-			cop_files
+	    check_path
+	    check_config
+	    check_launcher
+	    cop_files
+	    check_account & start_launcher
             ;;
         --add-dmenu)
             add_to_dmenu
