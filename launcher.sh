@@ -109,9 +109,11 @@ add_to_dmenu() {
     # Ajoute le bin dans le PATH via dmenu_run
     sed -i "s|bindsym \$mod+d exec --no-startup-id dmenu_run|bindsym \$mod+d exec --no-startup-id PATH=$bin_path:\$PATH dmenu_run|" "$i3_config"
     echo "export PATH=$bin_path:\$PATH" >> "$HOME/.bashrc"
-    echo "bindsym $mod+m exec --no-startup-id minecraft-launcher -l"
+    echo "bindsym $mod+m exec --no-startup-id minecraft-launcher -l" >> "$i3_config"
+    
     source "$HOME/.bashrc"
     cp "$0" "$bin_path/minecraft-launcher"
+    
     chmod +x "$bin_path/minecraft-launcher"
     #echo "Ajouté à dmenu !"
 }
