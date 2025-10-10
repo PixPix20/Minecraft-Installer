@@ -4,7 +4,7 @@
 # AVERTISSEMENT LÉGAL ET TECHNIQUE
 # Date    : 2025-10-08
 # Auteur  : Lucas Morel <lucas.morel@epita.fr>
-# Version : v1.1  (https://github.com/PixPix20/Minecraft-Installer)
+# Version : v1.2  (https://github.com/PixPix20/Minecraft-Installer)
 #
 # 1) Objet : Ce script vise à automatiser le lancement et l'installation de PrismLauncher.
 #
@@ -22,150 +22,140 @@
 
 set -euo pipefail
 
-VERSION="1.1"
+VERSION="1.2"
 
-
-
-set_env(){
-
-
-
+# Variables globales
 env="prod"
-#AFS
-if [ "$env" = "dev" ]; then
-	afs="$HOME/test"
-    printf "ATTENTION: Vous etes en mode 'dev'. Les path ont changés !\n"
-else
-	afs="$HOME/afs"
-	#i3="$afs/.confs/config/i3/config"
+afs="$HOME/afs"
+i3="$afs/.confs/config/i3"
+i3_config="$i3/config"
 
-fi
+max_storage=2147483648 #2Go max sur l'afs
+minecraft_storage=943718400 #900Mo pour Minecraft
+margin_storage=419430400 #400Mo de marge
 
-i3=$afs/.confs/config/i3
-i3_config=$i3/config
-mkdir -p $afs $i3
-}
-max_storage=2147483648 #2Go, le stockage max de l'afs, je deconseille fortement d'augmenter cette valeur !
-minecraft_storage=943718400 #900Mo, j'utilise cette valeur si vous voulez jouer avec un modpack qui est lourd
-margin_storage=419430400 #400Mo, marge de securité pour que vous puissiez utiliser l'afs aprés l'installation du jeu, je deconseille de modifier cette valeur
-
-#LAUNCHER
-
-minecraft_path="$afs/minecraft" #dossier qui contient minecraft la conf du launcher etc
+minecraft_path="$afs/minecraft"
 launcher_name="PrismLauncher"
-launcher_config_path="$minecraft_path/config" #dossier qui contient les configurations du launcher
-launcher_appimage="$minecraft_path/PrismLauncher-Linux-x86_64.AppImage" #Dossier sense contenir le .appimage du launcher
-instances_path="$minecraft_path/Instances" #dossier qui contient les instances minecraft
-mods_path="$minecraft_path/mods" #Dossier qui contient les mods minecraft
-java_path="$minecraft_path/java" #Dossier qui contient java(prism l'installe)
+launcher_config_path="$minecraft_path/config"
+launcher_appimage="$minecraft_path/PrismLauncher-Linux-x86_64.AppImage"
+instances_path="$minecraft_path/Instances"
+mods_path="$minecraft_path/mods"
+java_path="$minecraft_path/java"
 downloads_path="$HOME/Downloads"
 launcher_local_files_path="$HOME/.local/share/PrismLauncher"
-bin_path="$minecraft_path/bin" #dossier où se trouve l'executable du launcher
+bin_path="$minecraft_path/bin"
 
-#URL
-launcher_url="https://github.com/PrismLauncher/PrismLauncher/releases/download/9.4/PrismLauncher-Linux-x86_64.AppImage" #URL du github pour telecharger le launcher
-config_url="https://raw.githubusercontent.com/PixPix20/Minecraft-Installer/refs/heads/main/prismlauncher.cfg" #URL pour télécharger la config du launcher
+launcher_url="https://github.com/PrismLauncher/PrismLauncher/releases/download/9.4/PrismLauncher-Linux-x86_64.AppImage"
+config_url="https://raw.githubusercontent.com/PixPix20/Minecraft-Installer/refs/heads/main/prismlauncher.cfg"
 
-show_version(){
-    printf "Version ${VERSION}\n"
+# Fonctions
+
+set_env() {
+    if [ "${env:-prod}" = "dev" ]; then
+        afs="$HOME/test"
+        printf "ATTENTION: Vous êtes en mode 'dev'. Les chemins ont changé !\n"
+    else
+        afs="$HOME/afs"
+    fi
+    i3="$afs/.confs/config/i3"
+    i3_config="$i3/config"
+    mkdir -p "$afs" "$i3"
 }
-show_env(){
-    printf "Environement : ${env}\n"
-    printf "--PATHS :\n"
-    printf "AFS : ${afs}\n"
-    printf "i3 : ${i3_config}\n"
-    printf "Configuration du launcher : ${launcher_config_path}\n"
-    printf "Dossier de l'appimage : ${launcher_appimage}\n"
-    printf "Instances : ${instances_path}\n"
-    printf "Mods : ${mods_path}\n"
-    printf "Java : ${java_path}\n"
-    printf "Téléchargements : ${downloads_path}\n"
-    printf "Fichiers locaux du launcher : ${launcher_local_files_path}\n"
-    printf "Script : ${bin_path}\n"
+
+show_version() {
+    printf "Version %s\n" "$VERSION"
 }
-help_msg(){
-	cat <<EOF
-	Minecraft Installer v$VERSION
+
+show_env() {
+    printf "Environnement : %s\n--PATHS :\n" "$env"
+    printf "AFS : %s\n" "$afs"
+    printf "i3 : %s\n" "$i3_config"
+    printf "Config launcher : %s\n" "$launcher_config_path"
+    printf "AppImage : %s\n" "$launcher_appimage"
+    printf "Instances : %s\n" "$instances_path"
+    printf "Mods : %s\n" "$mods_path"
+    printf "Java : %s\n" "$java_path"
+    printf "Téléchargements : %s\n" "$downloads_path"
+    printf "Fichiers locaux launcher : %s\n" "$launcher_local_files_path"
+    printf "Script : %s\n" "$bin_path"
+}
+
+help_msg() {
+cat <<EOF
+Minecraft Installer v$VERSION
 Usage: $0 [option]
 
 Options:
- -v, --version      Affiche le version du script
- -e,--env           Affiche l'environement utilisé et les paths
- -i, --install		Installer le PrismLauncher
- -u, --update		Mettre à jour le script
- -r, --remove		Désinstaller le launcher et ses fichiers
- -l, --launch		Lancer PrismLauncher
- --add-dmenu		Ajouter Le script à dmenu
- -h, --help		    Afficher ce texte
+ -v, --version        Affiche la version du script
+ -e, --env [dev|prod] Définit l'environnement (dev/prod)
+ -se, --show-env      Affiche l'environnement et les paths
+ -i, --install        Installe PrismLauncher
+ -u, --update         Met à jour le script
+ -r, --remove         Désinstalle le launcher et ses fichiers
+ -l, --launch         Lance PrismLauncher
+ -ad, --add-dmenu     Ajoute le script à dmenu
+ -h, --help           Affiche ce texte
 EOF
 }
 
-check_commands(){
-    local err
-    #Check si les commandes utilisées sont installées
-    for cmd in wget curl sed grep nix-shell; do 
-        if ! command -v "$cmd" &> /dev/null; then
-            printf "${cmd} n'est pas installée ! \n"
-            err=true
+check_commands() {
+    local err=0
+    for cmd in wget curl sed grep nix-shell bc; do
+        if ! command -v "$cmd" &>/dev/null; then
+            printf "%s n'est pas installé !\n" "$cmd"
+            err=1
         fi
-    done 
-    if err=true; then 
+    done
+    return $err
+}
+
+check_storage() {
+    local used_storage total_storage
+    used_storage=$(du -sb "$afs" 2>/dev/null | awk '{print $1}')
+    total_storage=$((used_storage + minecraft_storage + margin_storage))
+    if ((max_storage < total_storage)); then
+        printf "Erreur, pas assez de place pour l'installation ! %d octets requis.\n" "$total_storage"
         return 1
-    else return 0
     fi
+    return 0
 }
 
-check_storage(){
-	#verification si l'AFS peut installer minecraft en plus de garder un marge pour les autre fichiers
-	local used_storage total_storage
-	used_storage=$(du -sb "$afs"|awk '{print $1}')
-    total_storage=$((used_storage + minecraft_storage + margin_storage)) #On additionne le stockage déja utilisé, la taille (~) de MC puis on ajoute une marge de secu.
-    if ((max_storage < $total_storage)); then 
-        printf "Erreur, pas assez de place pour l'installation ! ${total_storage}Mo requis."
-        return 1
-    else 
-        return 0
+check_path() {
+    mkdir -p "$minecraft_path" "$launcher_config_path" "$instances_path" "$mods_path" "$java_path" "$bin_path"
+}
+
+check_config() {
+    local config="$launcher_config_path/prismlauncher.cfg"
+    if [ ! -f "$config" ]; then
+        wget -q -P "$launcher_config_path/" "$config_url"
+        sed -i \
+            -e "s|DownloadsDir=.*|DownloadsDir=$downloads_path|" \
+            -e "s|InstanceDir=.*|InstanceDir=$instances_path|" \
+            -e "s|CentralModsDir=.*|CentralModsDir=$mods_path|" \
+            -e "s|JavaDir=.*|JavaDir=$java_path|" \
+            "$config"
     fi
-}
-
-check_path(){
-	#Verfication de l'arbo du dossier minecraft
-	 mkdir -p $minecraft_path $launcher_config_path $instances_path $mods_path $java_path $bin_path
-}
-
-check_config(){
-	#telechargement et modification de la config
-	local config="$launcher_config_path/prismlauncher.cfg"
-	if [ ! -f "$config" ]; then
-	   wget -q -P "$launcher_config_path/" $config_url
-	   sed -i \
-		   -e "s|DownloadsDir=|DownloadsDir=$downloads_path|" \
-		   -e "s|InstanceDir=|InstanceDir=$instances_path|" \
-		   -e "s|CentralModsDir=|CentralModsDir=$mods_path|" \
-		   -e "s|JavaDir=|JavaDir=$java_path|" \
-		   "$config"
-	fi
 }
 
 add_to_dmenu() {
-    # Ajoute le bin dans le PATH via dmenu_run
     sed -i "s|bindsym \$mod+d exec --no-startup-id dmenu_run|bindsym \$mod+d exec --no-startup-id PATH=$bin_path:\$PATH dmenu_run|" "$i3_config"
-    echo "export PATH=$bin_path:\$PATH" >> "$HOME/.bashrc"
-    echo "bindsym \$mod+m exec --no-startup-id minecraft-launcher -l" >> "$i3_config"
-    source "$HOME/.bashrc"
+    if ! grep -q "PATH=$bin_path" "$HOME/.bashrc"; then
+        echo "export PATH=$bin_path:\$PATH" >> "$HOME/.bashrc"
+    fi
+    if ! grep -q "minecraft-launcher" "$i3_config"; then
+        echo "bindsym \$mod+m exec --no-startup-id minecraft-launcher -l" >> "$i3_config"
+    fi
     cp "$0" "$bin_path/minecraft-launcher"
-    chmod +x "$bin_path/minecraft-launcher" 
+    chmod +x "$bin_path/minecraft-launcher"
 }
 
 remove_all() {
-    #Supprime PrismLauncher et les dossiers de minecraft
     rm -rf "$minecraft_path"
     sed -i "s|PATH=$bin_path:\$PATH||g" "$HOME/.bashrc"
 }
 
 update_script() {
-    #echo "Mise à jour du script launcher.sh..."
-    script_url="https://raw.githubusercontent.com/PixPix20/Minecraft-Installer/main/launcher.sh"
+    local script_url="https://raw.githubusercontent.com/PixPix20/Minecraft-Installer/main/launcher.sh"
     wget -q -O "$0.tmp" "$script_url"
     if [ -s "$0.tmp" ]; then
         mv "$0.tmp" "$0"
@@ -178,29 +168,23 @@ update_script() {
 }
 
 get_remote_version() {
-    # Récupère la version sur GitHub avec l'API
-    remote_url="https://api.github.com/repos/PixPix20/Minecraft-Installer/releases/latest"
-    version=$(curl -s $remote_url | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-    echo "$version"
+    local remote_url="https://api.github.com/repos/PixPix20/Minecraft-Installer/releases/latest"
+    curl -s "$remote_url" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/'
 }
 
 check_script_update() {
-    #Met à jour le script vers la nouvelle version
-    local_version="$VERSION"
+    local local_version="$VERSION"
+    local remote_version
     remote_version=$(get_remote_version)
-
     if [ -z "$remote_version" ]; then
         echo "Impossible de récupérer la version distante."
         return 1
     fi
-
     echo "Version locale : $local_version"
     echo "Version distante : $remote_version"
-
-    if [ 1 -eq "$(echo "${remote_version} > ${local_version}" | bc)" ]; then
+    if [ "$(printf '%s\n' "$remote_version" "$local_version" | sort -V | head -n1)" != "$remote_version" ]; then
         echo "Une nouvelle version du script est disponible."
-        echo "Voulez-vous la mettre à jour ? [o/N]"
-        read -r answer
+        read -r -p "Voulez-vous la mettre à jour ? [o/N] " answer
         if [[ "$answer" =~ ^[Oo]$ ]]; then
             update_script
         else
@@ -211,49 +195,58 @@ check_script_update() {
     fi
 }
 
-check_account(){
-	#enregistrement du compte une fois connecte
-	while [ ! -f "$launcher_local_files_path/accounts.json" ]; do
-	      sleep 2
-	done
-	printf "Compte détécté, sauvegarde"
-	cp $launcher_local_files_path/accounts.json $launcher_config_path
+check_account() {
+    while [ ! -f "$launcher_local_files_path/accounts.json" ]; do
+        sleep 2
+    done
+    printf "Compte détecté, sauvegarde\n"
+    cp "$launcher_local_files_path/accounts.json" "$launcher_config_path"
 }
 
-check_launcher(){
-	#telechargement du launcher si inexistant
-	if [ ! -f "$launcher_appimage" ]; then
-    	   mkdir -p "$(dirname "$launcher_appimage")"
-    	   #curl -L -o "$launcher_appimage" "$launcher_url" #si wget ne marche pas, décommentez cette ligne et commentez l'autre
-    	   wget -q -O "$launcher_appimage" "$launcher_url"
-	   chmod +x "$launcher_appimage"
-	fi
-}
-cop_files(){
-	#deplacement des fichers de config et du compte dans le .local du launcher
-	mkdir -p $launcher_local_files_path
-	cp $launcher_config_path/* $launcher_local_files_path
+check_launcher() {
+    if [ ! -f "$launcher_appimage" ]; then
+        mkdir -p "$(dirname "$launcher_appimage")"
+        wget -q -O "$launcher_appimage" "$launcher_url"
+        chmod +x "$launcher_appimage"
+    fi
 }
 
-start_launcher(){
-	nix-shell -p appimage-run --run "appimage-run $launcher_appimage"
+cop_files() {
+    mkdir -p "$launcher_local_files_path"
+    cp "$launcher_config_path"/* "$launcher_local_files_path"
+}
+
+start_launcher() {
+    nix-shell -p appimage-run --run "appimage-run $launcher_appimage"
 }
 
 main() {
+    set_env
     if [ $# -eq 0 ]; then
+        check_commands || exit 1
         check_path
-	    check_config
-	    check_launcher
-	    cop_files
-	    check_account & start_launcher
-		exit 0
+        check_config
+        check_launcher
+        cop_files
+        check_account & start_launcher
+        exit 0
     fi
 
-    case "$1" in
-        -i|--install)
-            if [ "$env" = "prod" ] && ! check_commands; then
+    case "${1:-}" in
+        -e|--env)
+            if [[ -n "${2:-}" ]]; then
+                env="$2"
+            else
+                echo "Usage: $0 --env [dev|prod]"
                 exit 1
             fi
+            set_env
+            ;;
+        -se|--show-env)
+            show_env
+            ;;
+        -i|--install)
+            check_commands || exit 1
             check_storage || exit 1
             check_path
             check_config
@@ -261,27 +254,21 @@ main() {
             add_to_dmenu
             echo "Installation terminée."
             ;;
-        --env)
-            env=$2
-            ;;
-        -se|--senv) 
-            show_env
-            ;;
         -u|--update)
-            check_commands
+            check_commands || exit 1
             check_script_update
             ;;
         -r|--remove)
             remove_all
             ;;
-		-l|--launch)
-            check_commands
-			check_path
-		    check_config
-		    check_launcher
-		    cop_files
-		    check_account & start_launcher
-			;;
+        -l|--launch)
+            check_commands || exit 1
+            check_path
+            check_config
+            check_launcher
+            cop_files
+            check_account & start_launcher
+            ;;
         -ad|--add-dmenu)
             add_to_dmenu
             ;;
@@ -300,3 +287,4 @@ main() {
 }
 
 main "$@"
+
