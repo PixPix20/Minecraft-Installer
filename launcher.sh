@@ -24,6 +24,12 @@ set -euo pipefail
 
 VERSION="1.1"
 
+
+
+set_env(){
+
+
+
 env="prod"
 #AFS
 if [ "$env" = "dev" ]; then
@@ -38,7 +44,7 @@ fi
 i3=$afs/.confs/config/i3
 i3_config=$i3/config
 mkdir -p $afs $i3
-
+}
 max_storage=2147483648 #2Go, le stockage max de l'afs, je deconseille fortement d'augmenter cette valeur !
 minecraft_storage=943718400 #900Mo, j'utilise cette valeur si vous voulez jouer avec un modpack qui est lourd
 margin_storage=419430400 #400Mo, marge de securité pour que vous puissiez utiliser l'afs aprés l'installation du jeu, je deconseille de modifier cette valeur
@@ -255,8 +261,10 @@ main() {
             add_to_dmenu
             echo "Installation terminée."
             ;;
-
-        -e|--env) 
+        --env)
+            env=$2
+            ;;
+        -se|--senv) 
             show_env
             ;;
         -u|--update)
