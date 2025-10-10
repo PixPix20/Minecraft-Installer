@@ -28,14 +28,14 @@ env="prod"
 #AFS
 if [ "$env" = "dev" ]; then
 	afs="$HOME/test"
-    printf "ATTENTION: Vous etes en mode 'dev'. Les path ont changés"
+    printf "ATTENTION: Vous etes en mode 'dev'. Les path ont changés !\n"
 else
 	afs="$HOME/afs"
 	#i3="$afs/.confs/config/i3/config"
 
 fi
 
-i3=$afs/.confs/config/i3/
+i3=$afs/.confs/config/i3
 i3_config=$i3/config
 mkdir -p $afs $i3
 
@@ -61,8 +61,8 @@ launcher_url="https://github.com/PrismLauncher/PrismLauncher/releases/download/9
 config_url="https://raw.githubusercontent.com/PixPix20/Minecraft-Installer/refs/heads/main/prismlauncher.cfg" #URL pour télécharger la config du launcher
 
 show_version(){
-    printf "Version ${$version}"
-    print "Environement ${env}"
+    printf "Version ${VERSION}\n"
+    printf "Environement : ${env}\n"
 }
 
 help_msg(){
@@ -82,12 +82,18 @@ EOF
 }
 
 check_commands(){
+    local err
     #Check si les commandes utilisées sont installées
     for cmd in wget curl sed grep nix-shell; do 
-        if ! command --version "$cmd" &> /dev/null; then
-            printf "${cmd} n'est pas installée"
+        if ! command -v "$cmd" &> /dev/null; then
+            printf "${cmd} n'est pas installée ! \n"
+            err=true
         fi
     done 
+    if err=true; then 
+        return 1
+    else return 0
+    fi
 }
 
 check_storage(){
@@ -126,7 +132,7 @@ add_to_dmenu() {
     # Ajoute le bin dans le PATH via dmenu_run
     sed -i "s|bindsym \$mod+d exec --no-startup-id dmenu_run|bindsym \$mod+d exec --no-startup-id PATH=$bin_path:\$PATH dmenu_run|" "$i3_config"
     echo "export PATH=$bin_path:\$PATH" >> "$HOME/.bashrc"
-    echo "bindsym $mod+m exec --no-startup-id minecraft-launcher -l" >> "$i3_config"
+    echo "bindsym \$mod+m exec --no-startup-id minecraft-launcher -l" >> "$i3_config"
     source "$HOME/.bashrc"
     cp "$0" "$bin_path/minecraft-launcher"
     chmod +x "$bin_path/minecraft-launcher" 
@@ -226,6 +232,13 @@ main() {
 
     case "$1" in
         -i|--install)
+            if [ check_commands ]; then
+                if [ "$env"!="dev" ]; then
+                    printf "erreur"
+                    exit 1
+                fi
+            fi
+
             check_storage || exit 1
             check_path
             check_config
@@ -234,12 +247,14 @@ main() {
             echo "Installation terminée."
             ;;
         -u|--update)
+            check_commands
             check_script_update
             ;;
         -r|--remove)
             remove_all
             ;;
 		-l|--launch)
+            check_commands
 			check_path
 		    check_config
 		    check_launcher
