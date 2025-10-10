@@ -6,7 +6,7 @@
 # Auteur  : Lucas Morel <lucas.morel@epita.fr>
 # Version : v1.1  (https://github.com/PixPix20/Minecraft-Installer)
 #
-# 1) Objet : Ce script vise à automatiser le lancement de PrismLauncher.
+# 1) Objet : Ce script vise à automatiser le lancement et l'installation de PrismLauncher.
 #
 # 2) Garantie : Fourni "tel quel", sans garantie expresse ou implicite.
 #
@@ -24,15 +24,11 @@ set -euo pipefail
 
 VERSION="1.1"
 
-#On verifie qu'il y a assez de place pour installer minecraft en plus de garder un peu de place pour le reste
-#STOCKAGE
-max_storage=2147483648 #2Go, le stockage max de l'afs, je deconseille fortement d'augmenter cette valeur !
-minecraft_storage=943718400 #900Mo, j'utilise cette valeur si vous voulez jouer avec un modpack qui est lourd
-margin_storage=419430400 #400Mo, marge de securité pour que vous puissiez utiliser l'afs aprés l'installation du jeu, je deconseille de modifier cette valeur
 env="prod"
 #AFS
 if [ "$env" = "dev" ]; then
 	afs="$HOME/test"
+    printf "ATTENTION: Vous etes en mode 'dev'."
 else
 	afs="$HOME/afs"
 	i3="$afs/.confs/config/i3/config"
@@ -42,6 +38,12 @@ i3=$afs/.confs/config/i3/
 i3_config=$i3/config
 mkdir -p $afs $i3
 
+
+max_storage=2147483648 #2Go, le stockage max de l'afs, je deconseille fortement d'augmenter cette valeur !
+
+max_storage=2147483648 
+minecraft_storage=943718400
+margin_storage=419430400
 
 #LAUNCHER
 
@@ -77,13 +79,26 @@ Options:
 EOF
 }
 
+check_commands(){
+    #Check si les commandes utilisées sont installées
+    for cmd in wget curl sed grep nix-shell; do 
+        if ! command --version "$cmd" &> /dev/null; then
+            printf "${cmd} n'est pas installée"
+        fi
+    done 
+}
 
 check_storage(){
 	#verification si l'AFS peut installer minecraft en plus de garder un marge pour les autre fichiers
 	local used_storage total_storage
 	used_storage=$(du -sb "$afs"|awk '{print $1}')
-        total_storage=$((used_storage + minecraft_storage + margin_storage)) #On additionne le stockage déja utilisé, la taille (~) de MC puis on ajoute une marge de secu.
-	
+    total_storage=$((used_storage + minecraft_storage + margin_storage)) #On additionne le stockage déja utilisé, la taille (~) de MC puis on ajoute une marge de secu.
+    if ((max_storage < $total_storage)); then 
+        printf "Erreur, pas assez de place pour l'installation ! ${total_storage}Mo requis."
+        return 1
+    else 
+        return 0
+    fi
 }
 
 check_path(){
@@ -110,19 +125,15 @@ add_to_dmenu() {
     sed -i "s|bindsym \$mod+d exec --no-startup-id dmenu_run|bindsym \$mod+d exec --no-startup-id PATH=$bin_path:\$PATH dmenu_run|" "$i3_config"
     echo "export PATH=$bin_path:\$PATH" >> "$HOME/.bashrc"
     echo "bindsym $mod+m exec --no-startup-id minecraft-launcher -l" >> "$i3_config"
-    
     source "$HOME/.bashrc"
     cp "$0" "$bin_path/minecraft-launcher"
-    
-    chmod +x "$bin_path/minecraft-launcher"
-    #echo "Ajouté à dmenu !"
+    chmod +x "$bin_path/minecraft-launcher" 
 }
 
 remove_all() {
-    #echo "Suppression de Minecraft et du launcher..."
+    #Supprime PrismLauncher et les dossiers de minecraft
     rm -rf "$minecraft_path"
     sed -i "s|PATH=$bin_path:\$PATH||g" "$HOME/.bashrc"
-    #echo "Suppression terminée."
 }
 
 update_script() {
@@ -147,6 +158,7 @@ get_remote_version() {
 }
 
 check_script_update() {
+    #Met à jour le script vers la nouvelle version
     local_version="$VERSION"
     remote_version=$(get_remote_version)
 
@@ -184,7 +196,6 @@ check_account(){
 check_launcher(){
 	#telechargement du launcher si inexistant
 	if [ ! -f "$launcher_appimage" ]; then
-    	   #echo "Téléchargement de $name..."
     	   mkdir -p "$(dirname "$launcher_appimage")"
     	   #curl -L -o "$launcher_appimage" "$launcher_url" #si wget ne marche pas, décommentez cette ligne et commentez l'autre
     	   wget -q -O "$launcher_appimage" "$launcher_url"
