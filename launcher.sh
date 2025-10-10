@@ -62,9 +62,21 @@ config_url="https://raw.githubusercontent.com/PixPix20/Minecraft-Installer/refs/
 
 show_version(){
     printf "Version ${VERSION}\n"
-    printf "Environement : ${env}\n"
 }
-
+show_env(){
+    printf "Environement : ${env}\n"
+    printf "--PATHS :\n"
+    printf "AFS : ${afs}\n"
+    printf "i3 : ${i3_config}\n"
+    printf "Configuration du launcher : ${launcher_config_path}\n"
+    printf "Dossier de l'appimage : ${launcher_appimage}\n"
+    printf "Instances : ${instances_path}\n"
+    printf "Mods : ${mods_path}\n"
+    printf "Java : ${java_path}\n"
+    printf "Téléchargements : ${downloads_path}\n"
+    printf "Fichiers locaux du launcher : ${launcher_local_files_path}\n"
+    printf "Script : ${bin_path}\n"
+}
 help_msg(){
 	cat <<EOF
 	Minecraft Installer v$VERSION
@@ -72,6 +84,7 @@ Usage: $0 [option]
 
 Options:
  -v, --version      Affiche le version du script
+ -e,--env           Affiche l'environement utilisé et les paths
  -i, --install		Installer le PrismLauncher
  -u, --update		Mettre à jour le script
  -r, --remove		Désinstaller le launcher et ses fichiers
@@ -232,19 +245,19 @@ main() {
 
     case "$1" in
         -i|--install)
-            if [ check_commands ]; then
-                if [ "$env"!="dev" ]; then
-                    printf "erreur"
-                    exit 1
-                fi
+            if [ "$env" = "prod" ] && ! check_commands; then
+                exit 1
             fi
-
             check_storage || exit 1
             check_path
             check_config
             check_launcher
             add_to_dmenu
             echo "Installation terminée."
+            ;;
+
+        -e|--env) 
+            show_env
             ;;
         -u|--update)
             check_commands
