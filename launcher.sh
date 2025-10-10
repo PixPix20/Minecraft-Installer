@@ -28,31 +28,27 @@ env="prod"
 #AFS
 if [ "$env" = "dev" ]; then
 	afs="$HOME/test"
-    printf "ATTENTION: Vous etes en mode 'dev'."
+    printf "ATTENTION: Vous etes en mode 'dev'. Les path ont changés"
 else
 	afs="$HOME/afs"
-	i3="$afs/.confs/config/i3/config"
+	#i3="$afs/.confs/config/i3/config"
 
 fi
+
 i3=$afs/.confs/config/i3/
 i3_config=$i3/config
 mkdir -p $afs $i3
 
-
 max_storage=2147483648 #2Go, le stockage max de l'afs, je deconseille fortement d'augmenter cette valeur !
-
-max_storage=2147483648 
-minecraft_storage=943718400
-margin_storage=419430400
+minecraft_storage=943718400 #900Mo, j'utilise cette valeur si vous voulez jouer avec un modpack qui est lourd
+margin_storage=419430400 #400Mo, marge de securité pour que vous puissiez utiliser l'afs aprés l'installation du jeu, je deconseille de modifier cette valeur
 
 #LAUNCHER
 
 minecraft_path="$afs/minecraft" #dossier qui contient minecraft la conf du launcher etc
-
 launcher_name="PrismLauncher"
 launcher_config_path="$minecraft_path/config" #dossier qui contient les configurations du launcher
 launcher_appimage="$minecraft_path/PrismLauncher-Linux-x86_64.AppImage" #Dossier sense contenir le .appimage du launcher
-
 instances_path="$minecraft_path/Instances" #dossier qui contient les instances minecraft
 mods_path="$minecraft_path/mods" #Dossier qui contient les mods minecraft
 java_path="$minecraft_path/java" #Dossier qui contient java(prism l'installe)
@@ -64,18 +60,24 @@ bin_path="$minecraft_path/bin" #dossier où se trouve l'executable du launcher
 launcher_url="https://github.com/PrismLauncher/PrismLauncher/releases/download/9.4/PrismLauncher-Linux-x86_64.AppImage" #URL du github pour telecharger le launcher
 config_url="https://raw.githubusercontent.com/PixPix20/Minecraft-Installer/refs/heads/main/prismlauncher.cfg" #URL pour télécharger la config du launcher
 
+show_version(){
+    printf "Version ${$version}"
+    print "Environement ${env}"
+}
+
 help_msg(){
 	cat <<EOF
 	Minecraft Installer v$VERSION
 Usage: $0 [option]
 
 Options:
+ -v, --version      Affiche le version du script
  -i, --install		Installer le PrismLauncher
  -u, --update		Mettre à jour le script
  -r, --remove		Désinstaller le launcher et ses fichiers
  -l, --launch		Lancer PrismLauncher
  --add-dmenu		Ajouter Le script à dmenu
- -h, --help		Afficher ce texte
+ -h, --help		    Afficher ce texte
 EOF
 }
 
@@ -246,6 +248,9 @@ main() {
 			;;
         -ad|--add-dmenu)
             add_to_dmenu
+            ;;
+        -v|--version)
+            show_version
             ;;
         -h|--help)
             help_msg
