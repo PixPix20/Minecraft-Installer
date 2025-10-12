@@ -1,28 +1,28 @@
 #!/usr/bin/env bash
 
-# -----------------------------------------------------------------------------
-# AVERTISSEMENT LÉGAL ET TECHNIQUE
-# Date    : 2025-10-08
-# Auteur  : Lucas Morel <lucas.morel@epita.fr>
-# Version : v1.2  (https://github.com/PixPix20/Minecraft-Installer)
-#
-# 1) Objet : Ce script vise à automatiser le lancement et l'installation de PrismLauncher.
-#
-# 2) Garantie : Fourni "tel quel", sans garantie expresse ou implicite.
-#
-# 3) Responsabilité : L'utilisateur est responsable de l'exécution sur son AFS.
-#    Je décline toute responsabilité pour toute perte, corruption ou modification
-#    de données, que le script ait été modifié ou non.
-#
-# 4) Modifications : Toute modification du script implique que le modificateur
-#    assume l'entière responsabilité des conséquences.
-#
-# Contact : https://github.com/PixPix20
-# -----------------------------------------------------------------------------
-
 set -euo pipefail
 
 VERSION="1.2"
+
+# Couleurs
+RED=$(tput setaf 1)
+GREEN=$(tput setaf 2)
+YELLOW=$(tput setaf 3)
+RESET=$(tput sgr0)
+
+# Mode verbeux
+verbose=0
+
+if [[ "${1:-}" == "--verbose" ]]; then
+    verbose=1
+    shift
+fi
+
+log() {
+    if ((verbose)); then
+        echo "$@"
+    fi
+}
 
 # Variables globales
 env="prod"
@@ -48,12 +48,10 @@ bin_path="$minecraft_path/bin"
 launcher_url="https://github.com/PrismLauncher/PrismLauncher/releases/download/9.4/PrismLauncher-Linux-x86_64.AppImage"
 config_url="https://raw.githubusercontent.com/PixPix20/Minecraft-Installer/refs/heads/main/prismlauncher.cfg"
 
-# Fonctions
-
 set_env() {
     if [ "${env:-prod}" = "dev" ]; then
         afs="$HOME/test"
-        printf "ATTENTION: Vous êtes en mode 'dev'. Les chemins ont changé !\n"
+        printf "${YELLOW}ATTENTION: Vous êtes en mode 'dev'. Les chemins ont changé !${RESET}\n"
     else
         afs="$HOME/afs"
     fi
@@ -95,6 +93,7 @@ Options:
  -l, --launch         Lance PrismLauncher
  -ad, --add-dmenu     Ajoute le script à dmenu
  -h, --help           Affiche ce texte
+ --verbose            Mode verbeux (affiche les étapes détaillées)
 EOF
 }
 
@@ -102,8 +101,10 @@ check_commands() {
     local err=0
     for cmd in wget curl sed grep nix-shell bc; do
         if ! command -v "$cmd" &>/dev/null; then
-            printf "%s n'est pas installé !\n" "$cmd"
+            printf "${RED}%s n'est pas installé !${RESET}\n" "$cmd"
             err=1
+        else
+            log "Commande $cmd OK."
         fi
     done
     return $err
@@ -113,8 +114,11 @@ check_storage() {
     local used_storage total_storage
     used_storage=$(du -sb "$afs" 2>/dev/null | awk '{print $1}')
     total_storage=$((used_storage + minecraft_storage + margin_storage))
+    printf "Espace utilisé : %.2f Mo\n" "$(bc <<< "scale=2; $used_storage/1048576")"
+    printf "Espace requis pour l'installation : %.2f Mo\n" "$(bc <<< "scale=2; $total_storage/1048576")"
+    printf "Quota maximal : %.2f Mo\n" "$(bc <<< "scale=2; $max_storage/1048576")"
     if ((max_storage < total_storage)); then
-        printf "Erreur, pas assez de place pour l'installation ! %d octets requis.\n" "$total_storage"
+        printf "${RED}Erreur, pas assez de place pour l'installation !${RESET}\n"
         return 1
     fi
     return 0
@@ -127,6 +131,7 @@ check_path() {
 check_config() {
     local config="$launcher_config_path/prismlauncher.cfg"
     if [ ! -f "$config" ]; then
+        log "Téléchargement du fichier de configuration..."
         wget -q -P "$launcher_config_path/" "$config_url"
         sed -i \
             -e "s|DownloadsDir=.*|DownloadsDir=$downloads_path|" \
@@ -156,13 +161,14 @@ remove_all() {
 
 update_script() {
     local script_url="https://raw.githubusercontent.com/PixPix20/Minecraft-Installer/main/launcher.sh"
-    wget -q -O "$0.tmp" "$script_url"
+    log "Téléchargement de la nouvelle version du script..."
+    wget --show-progress -O "$0.tmp" "$script_url"
     if [ -s "$0.tmp" ]; then
         mv "$0.tmp" "$0"
         chmod +x "$0"
-        echo "Script mis à jour !"
+        printf "${GREEN}Script mis à jour !${RESET}\n"
     else
-        echo "Erreur lors du téléchargement de la mise à jour."
+        printf "${RED}Erreur lors du téléchargement de la mise à jour.${RESET}\n"
         rm -f "$0.tmp"
     fi
 }
@@ -177,13 +183,13 @@ check_script_update() {
     local remote_version
     remote_version=$(get_remote_version)
     if [ -z "$remote_version" ]; then
-        echo "Impossible de récupérer la version distante."
+        printf "${RED}Impossible de récupérer la version distante.${RESET}\n"
         return 1
     fi
     echo "Version locale : $local_version"
     echo "Version distante : $remote_version"
     if [ "$(printf '%s\n' "$remote_version" "$local_version" | sort -V | head -n1)" != "$remote_version" ]; then
-        echo "Une nouvelle version du script est disponible."
+        printf "${YELLOW}Une nouvelle version du script est disponible.${RESET}\n"
         read -r -p "Voulez-vous la mettre à jour ? [o/N] " answer
         if [[ "$answer" =~ ^[Oo]$ ]]; then
             update_script
@@ -191,7 +197,7 @@ check_script_update() {
             echo "Mise à jour annulée."
         fi
     else
-        echo "Le script est à jour."
+        printf "${GREEN}Le script est à jour.${RESET}\n"
     fi
 }
 
@@ -199,14 +205,15 @@ check_account() {
     while [ ! -f "$launcher_local_files_path/accounts.json" ]; do
         sleep 2
     done
-    printf "Compte détecté, sauvegarde\n"
+    printf "${GREEN}Compte détecté, sauvegarde\n${RESET}"
     cp "$launcher_local_files_path/accounts.json" "$launcher_config_path"
 }
 
 check_launcher() {
     if [ ! -f "$launcher_appimage" ]; then
         mkdir -p "$(dirname "$launcher_appimage")"
-        wget -q -O "$launcher_appimage" "$launcher_url"
+        log "Téléchargement du launcher AppImage..."
+        wget --show-progress -O "$launcher_appimage" "$launcher_url"
         chmod +x "$launcher_appimage"
     fi
 }
@@ -217,6 +224,7 @@ cop_files() {
 }
 
 start_launcher() {
+    log "Lancement de PrismLauncher..."
     nix-shell -p appimage-run --run "appimage-run $launcher_appimage"
 }
 
@@ -252,7 +260,7 @@ main() {
             check_config
             check_launcher
             add_to_dmenu
-            echo "Installation terminée."
+            printf "${GREEN}Installation terminée.${RESET}\n"
             ;;
         -u|--update)
             check_commands || exit 1
@@ -279,7 +287,7 @@ main() {
             help_msg
             ;;
         *)
-            echo "Option inconnue: $1"
+            printf "${RED}Option inconnue: $1${RESET}\n"
             help_msg
             exit 1
             ;;
@@ -287,4 +295,3 @@ main() {
 }
 
 main "$@"
-
