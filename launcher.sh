@@ -81,7 +81,7 @@ show_env() {
 help_msg() {
 cat <<EOF
 Minecraft Installer v$VERSION
-Usage: $0 [option]
+Usage: $0 [option(s)]
 
 Options:
  -v, --version        Affiche la version du script
@@ -94,6 +94,7 @@ Options:
  -ad, --add-dmenu     Ajoute le script à dmenu
  -h, --help           Affiche ce texte
  --verbose            Mode verbeux (affiche les étapes détaillées)
+Plusieurs options peuvent être passées en même temps.
 EOF
 }
 
@@ -230,6 +231,7 @@ start_launcher() {
 
 main() {
     set_env
+
     if [ $# -eq 0 ]; then
         check_commands || exit 1
         check_path
@@ -240,58 +242,74 @@ main() {
         exit 0
     fi
 
-    case "${1:-}" in
-        -e|--env)
-            if [[ -n "${2:-}" ]]; then
-                env="$2"
-            else
-                echo "Usage: $0 --env [dev|prod]"
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            -e|--env)
+                if [[ -n "${2:-}" ]]; then
+                    env="$2"
+                    set_env
+                    shift 2
+                    continue
+                else
+                    echo "Usage: $0 --env [dev|prod]"
+                    exit 1
+                fi
+                ;;
+            -se|--show-env)
+                show_env
+                shift
+                ;;
+            -i|--install)
+                check_commands || exit 1
+                check_storage || exit 1
+                check_path
+                check_config
+                check_launcher
+                add_to_dmenu
+                printf "${GREEN}Installation terminée.${RESET}\n"
+                shift
+                ;;
+            -u|--update)
+                check_commands || exit 1
+                check_script_update
+                shift
+                ;;
+            -r|--remove)
+                remove_all
+                shift
+                ;;
+            -l|--launch)
+                check_commands || exit 1
+                check_path
+                check_config
+                check_launcher
+                cop_files
+                check_account & start_launcher
+                shift
+                ;;
+            -ad|--add-dmenu)
+                add_to_dmenu
+                shift
+                ;;
+            -v|--version)
+                show_version
+                shift
+                ;;
+            -h|--help)
+                help_msg
+                shift
+                ;;
+            --verbose)
+                verbose=1
+                shift
+                ;;
+            *)
+                printf "${RED}Option inconnue: $1${RESET}\n"
+                help_msg
                 exit 1
-            fi
-            set_env
-            ;;
-        -se|--show-env)
-            show_env
-            ;;
-        -i|--install)
-            check_commands || exit 1
-            check_storage || exit 1
-            check_path
-            check_config
-            check_launcher
-            add_to_dmenu
-            printf "${GREEN}Installation terminée.${RESET}\n"
-            ;;
-        -u|--update)
-            check_commands || exit 1
-            check_script_update
-            ;;
-        -r|--remove)
-            remove_all
-            ;;
-        -l|--launch)
-            check_commands || exit 1
-            check_path
-            check_config
-            check_launcher
-            cop_files
-            check_account & start_launcher
-            ;;
-        -ad|--add-dmenu)
-            add_to_dmenu
-            ;;
-        -v|--version)
-            show_version
-            ;;
-        -h|--help)
-            help_msg
-            ;;
-        *)
-            printf "${RED}Option inconnue: $1${RESET}\n"
-            help_msg
-            exit 1
-            ;;
-    esac
+                ;;
+        esac
+    done
 }
 
 main "$@"
